@@ -47,15 +47,32 @@ def absolutize_urls(element: BeautifulSoup, base_url: str) -> None:
     # Convert <a href> and <img src> (and common media) to absolute URLs
     for tag in element.find_all(["a", "img", "source", "audio", "video"]):
         if tag.name == "a" and tag.has_attr("href"):
-            tag["href"] = urljoin(base_url, tag.get("href"))
+            absolute_url = urljoin(base_url, tag.get("href"))
+            # Wrap URLs with spaces in angle brackets for proper Markdown
+            if " " in absolute_url:
+                tag["href"] = f"<{absolute_url}>"
+            else:
+                tag["href"] = absolute_url
         elif tag.name in ("img", "source") and tag.has_attr("src"):
-            tag["src"] = urljoin(base_url, tag.get("src"))
+            absolute_url = urljoin(base_url, tag.get("src"))
+            if " " in absolute_url:
+                tag["src"] = f"<{absolute_url}>"
+            else:
+                tag["src"] = absolute_url
         elif tag.name in ("audio", "video"):
             if tag.has_attr("src"):
-                tag["src"] = urljoin(base_url, tag.get("src"))
+                absolute_url = urljoin(base_url, tag.get("src"))
+                if " " in absolute_url:
+                    tag["src"] = f"<{absolute_url}>"
+                else:
+                    tag["src"] = absolute_url
             for src in tag.find_all("source"):
                 if src.has_attr("src"):
-                    src["src"] = urljoin(base_url, src.get("src"))
+                    absolute_url = urljoin(base_url, src.get("src"))
+                    if " " in absolute_url:
+                        src["src"] = f"<{absolute_url}>"
+                    else:
+                        src["src"] = absolute_url
 
 
 def extract_fields(html: str, base_url: str) -> dict:
@@ -64,6 +81,7 @@ def extract_fields(html: str, base_url: str) -> dict:
     title_el = soup.select_one("h1.article_title[itemprop=title]")
     author_el = soup.select_one("div.author")
     content_el = soup.select_one("div.article_text")
+    info_el = soup.select_one("div.info")
 
     if content_el is None:
         raise ValueError("Could not find div.article_text in the page")
@@ -73,6 +91,22 @@ def extract_fields(html: str, base_url: str) -> dict:
 
     article_title = title_el.get_text(strip=True) if title_el else ""
     author_html = author_el.decode_contents() if author_el else ""
+
+    # Extract volume and page numbers from div.info
+    volume = ""
+    page_numbers = ""
+    
+    if info_el:
+        # Find volume number in <a> tag
+        volume_link = info_el.find("a")
+        if volume_link:
+            volume = volume_link.get_text(strip=True)
+        
+        # Find page numbers in format "С. [numbers]"
+        info_text = info_el.get_text()
+        page_match = re.search(r"С\.\s*([0-9,\s\-]+)", info_text)
+        if page_match:
+            page_numbers = page_match.group(1).strip()
 
     content_md = md(
         str(content_el),
@@ -84,16 +118,20 @@ def extract_fields(html: str, base_url: str) -> dict:
     return {
         "article_title": article_title,
         "author_html": author_html.strip(),
+        "volume": volume,
+        "page_numbers": page_numbers,
         "content_md": content_md,
     }
 
 
-def build_front_matter(article_title: str, author_html: str, source_url: str) -> str:
+def build_front_matter(article_title: str, author_html: str, volume: str, page_numbers: str, source_url: str) -> str:
     author_text = BeautifulSoup(author_html, "html.parser").get_text(" ", strip=True) if author_html else ""
 
     data = {
         "article_title": article_title or None,
         "author": author_text or None,
+        "volume": volume or None,
+        "page_numbers": page_numbers or None,
         "source_url": source_url,
         "downloaded_at": dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
     }
@@ -127,6 +165,8 @@ def main(argv=None) -> int:
         front_matter = build_front_matter(
             article_title=fields["article_title"],
             author_html=fields["author_html"],
+            volume=fields["volume"],
+            page_numbers=fields["page_numbers"],
             source_url=url,
         )
         base_name = url_to_basename(url)
