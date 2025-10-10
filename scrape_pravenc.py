@@ -43,6 +43,162 @@ def fetch_html(url: str) -> str:
     return resp.text
 
 
+def process_content_with_references(content_el: BeautifulSoup, base_url: str) -> str:
+    """Process content element and convert reference divs to headings in place."""
+    # First, convert the main content to Markdown to find existing heading levels
+    main_content = content_el.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+    
+    # Find existing heading levels in the content
+    heading_levels = []
+    for element in main_content:
+        if element.name and element.name.startswith('h') and element.name[1:].isdigit():
+            level = int(element.name[1:])
+            heading_levels.append(level)
+    
+    # Determine reference heading level (one below the highest existing heading)
+    reference_level = min(heading_levels) + 1 if heading_levels else 2
+    reference_prefix = '#' * reference_level
+    
+    # Find all reference divs in the content (they might be nested)
+    reference_divs = content_el.find_all('div', class_='reference')
+    
+    # Process content and build Markdown sections
+    markdown_parts = []
+    
+    for child in content_el.children:
+        if hasattr(child, 'name') and child.name == 'div' and child.get('class') and 'content' in child.get('class'):
+            # Skip Содержание (Table of Contents) sections
+            continue
+        elif hasattr(child, 'name') and child.name == 'div' and child.get_text(strip=True).startswith('Содержание'):
+            # Skip any div that starts with "Содержание"
+            continue
+        elif hasattr(child, 'name') and child.name == 'div' and child.get('class') and 'toc' in child.get('class'):
+            # Skip Table of Contents div
+            continue
+        elif hasattr(child, 'name') and child.name == 'h1' and child.get('class') and 'article_title' in child.get('class'):
+            # Skip the main article title (it's already in metadata)
+            continue
+        elif hasattr(child, 'name') and child.name == 'div' and not child.get('class'):
+            # This is likely the main content div - process it specially to handle nested references
+            process_nested_content(child, reference_divs, reference_prefix, base_url, markdown_parts)
+        else:
+            # Regular content - convert to Markdown
+            if hasattr(child, 'name') and child.name:
+                child_md = md(
+                    str(child),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+                if child_md:
+                    markdown_parts.append(child_md)
+            elif str(child).strip():
+                # Handle text nodes
+                text_content = str(child).strip()
+                if text_content:
+                    markdown_parts.append(text_content)
+    
+    # Join all Markdown parts
+    content_md = '\n\n'.join(markdown_parts).strip()
+    
+    return content_md
+
+
+def process_nested_content(content_div: BeautifulSoup, reference_divs: list, reference_prefix: str, base_url: str, markdown_parts: list) -> None:
+    """Process a content div that may contain nested reference divs."""
+    # Process content section by section
+    current_section = []
+    
+    for element in content_div.children:
+        if hasattr(element, 'name') and element.name:
+            # Check if this element contains reference divs
+            refs_in_element = element.find_all('div', class_='reference')
+            
+            if refs_in_element:
+                # This element contains references - process it specially
+                # First add current section
+                if current_section:
+                    section_html = ''.join(current_section)
+                    section_md = md(
+                        section_html,
+                        heading_style="ATX",
+                        convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                        bullets="-",
+                    ).strip()
+                    if section_md:
+                        markdown_parts.append(section_md)
+                    current_section = []
+                
+                # Process the element with references
+                process_element_with_references(element, refs_in_element, reference_prefix, base_url, markdown_parts)
+            else:
+                # Regular content - add to current section
+                current_section.append(str(element))
+        elif str(element).strip():
+            current_section.append(str(element))
+    
+    # Add any remaining content
+    if current_section:
+        section_html = ''.join(current_section)
+        section_md = md(
+            section_html,
+            heading_style="ATX",
+            convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+            bullets="-",
+        ).strip()
+        if section_md:
+            markdown_parts.append(section_md)
+
+
+def process_element_with_references(element: BeautifulSoup, reference_divs: list, reference_prefix: str, base_url: str, markdown_parts: list) -> None:
+    """Process an element that contains reference divs."""
+    # Process the element content section by section
+    current_section = []
+    
+    for child in element.children:
+        if hasattr(child, 'name') and child.name == 'div' and child.get('class') and 'reference' in child.get('class'):
+            # This is a reference div - add current section and then the reference
+            if current_section:
+                section_html = ''.join(current_section)
+                section_md = md(
+                    section_html,
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+                if section_md:
+                    markdown_parts.append(section_md)
+                current_section = []
+            
+            # Add the reference with heading
+            absolutize_urls(child, base_url)
+            ref_md = md(
+                str(child),
+                heading_style="ATX",
+                convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                bullets="-",
+            ).strip()
+            markdown_parts.append(f"{reference_prefix} Литература\n\n{ref_md}")
+        else:
+            # Regular content - add to current section
+            if hasattr(child, 'name') and child.name:
+                current_section.append(str(child))
+            elif str(child).strip():
+                current_section.append(str(child))
+    
+    # Add any remaining content
+    if current_section:
+        section_html = ''.join(current_section)
+        section_md = md(
+            section_html,
+            heading_style="ATX",
+            convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+            bullets="-",
+        ).strip()
+        if section_md:
+            markdown_parts.append(section_md)
+
+
 def absolutize_urls(element: BeautifulSoup, base_url: str) -> None:
     # Convert <a href> and <img src> (and common media) to absolute URLs
     for tag in element.find_all(["a", "img", "source", "audio", "video"]):
@@ -79,7 +235,7 @@ def extract_fields(html: str, base_url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
 
     title_el = soup.select_one("h1.article_title[itemprop=title]")
-    author_el = soup.select_one("div.author")
+    author_els = soup.select("div.author")  # Get all author divs
     content_el = soup.select_one("div.article_text")
     info_el = soup.select_one("div.info")
 
@@ -90,7 +246,25 @@ def extract_fields(html: str, base_url: str) -> dict:
     absolutize_urls(content_el, base_url)
 
     article_title = title_el.get_text(strip=True) if title_el else ""
-    author_html = author_el.decode_contents() if author_el else ""
+    
+    # Extract all author names, remove duplicates, and join with commas
+    all_authors = []
+    for author_el in author_els:
+        author_text = author_el.get_text(strip=True)
+        if author_text:
+            # Split by comma in case multiple authors are in one div
+            individual_authors = [a.strip() for a in author_text.split(',')]
+            all_authors.extend(individual_authors)
+    
+    # Remove duplicates while preserving order
+    seen_authors = set()
+    unique_authors = []
+    for author in all_authors:
+        if author and author not in seen_authors:
+            unique_authors.append(author)
+            seen_authors.add(author)
+    
+    author_html = ", ".join(unique_authors)
 
     # Extract volume and page numbers from div.info
     volume = ""
@@ -108,16 +282,12 @@ def extract_fields(html: str, base_url: str) -> dict:
         if page_match:
             page_numbers = page_match.group(1).strip()
 
-    content_md = md(
-        str(content_el),
-        heading_style="ATX",
-        convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
-        bullets="-",
-    ).strip()
+    # Process content with references in place
+    content_md = process_content_with_references(content_el, base_url)
 
     return {
         "article_title": article_title,
-        "author_html": author_html.strip(),
+        "author_html": author_html,
         "volume": volume,
         "page_numbers": page_numbers,
         "content_md": content_md,
