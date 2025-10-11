@@ -170,15 +170,63 @@ def process_element_with_references(element: BeautifulSoup, reference_divs: list
                     markdown_parts.append(section_md)
                 current_section = []
             
-            # Add the reference with heading
+            # Add the reference with appropriate heading
             absolutize_urls(child, base_url)
-            ref_md = md(
-                str(child),
-                heading_style="ATX",
-                convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
-                bullets="-",
-            ).strip()
-            markdown_parts.append(f"{reference_prefix} Литература\n\n{ref_md}")
+            
+            # Detect literature type and remove abbreviation
+            ref_text = child.get_text(strip=True)
+            heading_text = "Литература"  # default
+            
+            if ref_text.startswith("Соч.:"):
+                heading_text = "Сочинения"
+                # Remove the abbreviation from the content
+                child_copy = BeautifulSoup(str(child), 'html.parser')
+                # Find and remove text nodes that start with "Соч.:"
+                for text_node in child_copy.find_all(string=True):
+                    if text_node.strip().startswith("Соч.:"):
+                        text_node.replace_with(text_node.strip()[5:])  # Remove "Соч.:"
+                ref_md = md(
+                    str(child_copy),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            elif ref_text.startswith("Ист.:"):
+                heading_text = "Источники"
+                # Remove the abbreviation from the content
+                child_copy = BeautifulSoup(str(child), 'html.parser')
+                for text_node in child_copy.find_all(string=True):
+                    if text_node.strip().startswith("Ист.:"):
+                        text_node.replace_with(text_node.strip()[5:])  # Remove "Ист.:"
+                ref_md = md(
+                    str(child_copy),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            elif ref_text.startswith("Лит.:"):
+                heading_text = "Литература"
+                # Remove the abbreviation from the content
+                child_copy = BeautifulSoup(str(child), 'html.parser')
+                for text_node in child_copy.find_all(string=True):
+                    if text_node.strip().startswith("Лит.:"):
+                        text_node.replace_with(text_node.strip()[5:])  # Remove "Лит.:"
+                ref_md = md(
+                    str(child_copy),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            else:
+                # No abbreviation found, use original content
+                ref_md = md(
+                    str(child),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            
+            markdown_parts.append(f"{reference_prefix} {heading_text}\n\n{ref_md}")
         else:
             # Regular content - add to current section
             if hasattr(child, 'name') and child.name:
