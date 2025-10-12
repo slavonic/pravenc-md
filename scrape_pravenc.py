@@ -3,6 +3,7 @@ import argparse
 import datetime as dt
 import re
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -43,6 +44,20 @@ def fetch_html(url: str) -> str:
     return resp.text
 
 
+def get_next_article_url(html: str, current_url: str) -> str:
+    """Extract the URL of the next article from the 'следующая статья' link."""
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # Look for the "следующая статья" link
+    next_link = soup.find("a", string="следующая статья")
+    if next_link and next_link.get("href"):
+        # Convert relative URL to absolute URL
+        next_url = urljoin(current_url, next_link.get("href"))
+        return next_url
+    
+    return None
+
+
 def process_content_with_references(content_el: BeautifulSoup, base_url: str) -> str:
     """Process content element and convert reference divs to headings in place."""
     # First, convert the main content to Markdown to find existing heading levels
@@ -56,7 +71,13 @@ def process_content_with_references(content_el: BeautifulSoup, base_url: str) ->
             heading_levels.append(level)
     
     # Determine reference heading level (one below the highest existing heading)
-    reference_level = min(heading_levels) + 1 if heading_levels else 2
+    # If there are headings, use one level below the minimum; otherwise use h1
+    if heading_levels:
+        reference_level = min(heading_levels) + 1
+        # Don't go beyond h6
+        reference_level = min(reference_level, 6)
+    else:
+        reference_level = 1
     reference_prefix = '#' * reference_level
     
     # Find all reference divs in the content (they might be nested)
@@ -110,7 +131,78 @@ def process_nested_content(content_div: BeautifulSoup, reference_divs: list, ref
     current_section = []
     
     for element in content_div.children:
-        if hasattr(element, 'name') and element.name:
+        if hasattr(element, 'name') and element.name == 'div' and element.get('class') and 'reference' in element.get('class'):
+            # This is a direct reference div - add current section and then the reference
+            if current_section:
+                section_html = ''.join(current_section)
+                section_md = md(
+                    section_html,
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+                if section_md:
+                    markdown_parts.append(section_md)
+                current_section = []
+            
+            # Add the reference with appropriate heading
+            absolutize_urls(element, base_url)
+            
+            # Detect literature type and remove abbreviation
+            ref_text = element.get_text(strip=True)
+            heading_text = "Литература"  # default
+            
+            if ref_text.startswith("Соч.:"):
+                heading_text = "Сочинения"
+                # Remove the abbreviation from the content
+                element_copy = BeautifulSoup(str(element), 'html.parser')
+                # Find and remove text nodes that start with "Соч.:"
+                for text_node in element_copy.find_all(string=True):
+                    if text_node.strip().startswith("Соч.:"):
+                        text_node.replace_with(text_node.strip()[5:])  # Remove "Соч.:"
+                ref_md = md(
+                    str(element_copy),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            elif ref_text.startswith("Ист.:"):
+                heading_text = "Источники"
+                # Remove the abbreviation from the content
+                element_copy = BeautifulSoup(str(element), 'html.parser')
+                for text_node in element_copy.find_all(string=True):
+                    if text_node.strip().startswith("Ист.:"):
+                        text_node.replace_with(text_node.strip()[5:])  # Remove "Ист.:"
+                ref_md = md(
+                    str(element_copy),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            elif ref_text.startswith("Лит.:"):
+                heading_text = "Литература"
+                # Remove the abbreviation from the content
+                element_copy = BeautifulSoup(str(element), 'html.parser')
+                for text_node in element_copy.find_all(string=True):
+                    if text_node.strip().startswith("Лит.:"):
+                        text_node.replace_with(text_node.strip()[5:])  # Remove "Лит.:"
+                ref_md = md(
+                    str(element_copy),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            else:
+                # No abbreviation found, use original content
+                ref_md = md(
+                    str(element),
+                    heading_style="ATX",
+                    convert=['br', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'pre'],
+                    bullets="-",
+                ).strip()
+            
+            markdown_parts.append(f"{reference_prefix} {heading_text}\n\n{ref_md}")
+        elif hasattr(element, 'name') and element.name:
             # Check if this element contains reference divs
             refs_in_element = element.find_all('div', class_='reference')
             
@@ -370,30 +462,101 @@ def save_markdown(output_dir: Path, base_name: str, front_matter: str, content_m
     return out_path
 
 
+def download_all_articles(start_url: str, output_dir: str) -> int:
+    """Download all articles starting from start_url, following 'следующая статья' links."""
+    current_url = start_url
+    article_count = 0
+    
+    print(f"Starting to download articles from: {start_url}")
+    print(f"Output directory: {output_dir}")
+    print("-" * 50)
+    
+    while current_url:
+        try:
+            print(f"[{article_count + 1}] Processing: {current_url}")
+            
+            # Fetch the article
+            html = fetch_html(current_url)
+            
+            # Check if we got a 404 error page
+            if "404 ошибка" in html or "Такого документа нет" in html:
+                print(f"Reached end of articles (404 error) at: {current_url}")
+                break
+            
+            # Process the article
+            fields = extract_fields(html, base_url=current_url)
+            front_matter = build_front_matter(
+                article_title=fields["article_title"],
+                author_html=fields["author_html"],
+                volume=fields["volume"],
+                page_numbers=fields["page_numbers"],
+                source_url=current_url,
+            )
+            base_name = url_to_basename(current_url)
+            out_path = save_markdown(Path(output_dir), base_name, front_matter, fields["content_md"])
+            
+            article_count += 1
+            print(f"    ✓ Saved: {out_path}")
+            print(f"    ✓ Title: {fields['article_title']}")
+            
+            # Get the next article URL
+            next_url = get_next_article_url(html, current_url)
+            if next_url:
+                current_url = next_url
+                print(f"    → Next: {current_url}")
+            else:
+                print("    → No next article found, stopping.")
+                break
+            
+            # Pause to be respectful to the server
+            time.sleep(0.5)
+            print()
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                print(f"Reached end of articles (HTTP 404) at: {current_url}")
+                break
+            else:
+                print(f"HTTP Error {e.response.status_code}: {e}", file=sys.stderr)
+                break
+        except Exception as e:
+            print(f"Error processing {current_url}: {e}", file=sys.stderr)
+            break
+    
+    print("-" * 50)
+    print(f"Download completed. Processed {article_count} articles.")
+    return 0
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Download and convert Pravenc article to Markdown with YAML front matter")
-    parser.add_argument("url", nargs="?", default="https://pravenc.ru/text/71893.html", help="Article URL to download")
-    parser.add_argument("--out-dir", default="articles", help="Directory to save the Markdown file")
+    parser = argparse.ArgumentParser(description="Download and convert Pravenc article(s) to Markdown with YAML front matter")
+    parser.add_argument("url", nargs="?", default="https://pravenc.ru/text/71893.html", help="Article URL to download (or starting URL for --all)")
+    parser.add_argument("--out-dir", default="articles", help="Directory to save the Markdown file(s)")
+    parser.add_argument("--all", action="store_true", help="Download all articles starting from the given URL")
     args = parser.parse_args(argv)
 
-    url = args.url
-    try:
-        html = fetch_html(url)
-        fields = extract_fields(html, base_url=url)
-        front_matter = build_front_matter(
-            article_title=fields["article_title"],
-            author_html=fields["author_html"],
-            volume=fields["volume"],
-            page_numbers=fields["page_numbers"],
-            source_url=url,
-        )
-        base_name = url_to_basename(url)
-        out_path = save_markdown(Path(args.out_dir), base_name, front_matter, fields["content_md"])
-        print(str(out_path))
-        return 0
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
+    if args.all:
+        return download_all_articles(args.url, args.out_dir)
+    else:
+        # Single article download (original functionality)
+        url = args.url
+        try:
+            html = fetch_html(url)
+            fields = extract_fields(html, base_url=url)
+            front_matter = build_front_matter(
+                article_title=fields["article_title"],
+                author_html=fields["author_html"],
+                volume=fields["volume"],
+                page_numbers=fields["page_numbers"],
+                source_url=url,
+            )
+            base_name = url_to_basename(url)
+            out_path = save_markdown(Path(args.out_dir), base_name, front_matter, fields["content_md"])
+            print(str(out_path))
+            return 0
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
 
 
 if __name__ == "__main__":
