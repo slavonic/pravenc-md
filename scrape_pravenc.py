@@ -3,7 +3,6 @@ import argparse
 import datetime as dt
 import re
 import sys
-import time
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -42,20 +41,6 @@ def fetch_html(url: str) -> str:
     resp.encoding = resp.apparent_encoding or resp.encoding
     resp.raise_for_status()
     return resp.text
-
-
-def get_next_article_url(html: str, current_url: str) -> str:
-    """Extract the URL of the next article from the 'следующая статья' link."""
-    soup = BeautifulSoup(html, "html.parser")
-    
-    # Look for the "следующая статья" link
-    next_link = soup.find("a", string="следующая статья")
-    if next_link and next_link.get("href"):
-        # Convert relative URL to absolute URL
-        next_url = urljoin(current_url, next_link.get("href"))
-        return next_url
-    
-    return None
 
 
 def process_content_with_references(content_el: BeautifulSoup, base_url: str) -> str:
@@ -462,101 +447,33 @@ def save_markdown(output_dir: Path, base_name: str, front_matter: str, content_m
     return out_path
 
 
-def download_all_articles(start_url: str, output_dir: str) -> int:
-    """Download all articles starting from start_url, following 'следующая статья' links."""
-    current_url = start_url
-    article_count = 0
-    
-    print(f"Starting to download articles from: {start_url}")
-    print(f"Output directory: {output_dir}")
-    print("-" * 50)
-    
-    while current_url:
-        try:
-            print(f"[{article_count + 1}] Processing: {current_url}")
-            
-            # Fetch the article
-            html = fetch_html(current_url)
-            
-            # Check if we got a 404 error page
-            if "404 ошибка" in html or "Такого документа нет" in html:
-                print(f"Reached end of articles (404 error) at: {current_url}")
-                break
-            
-            # Process the article
-            fields = extract_fields(html, base_url=current_url)
-            front_matter = build_front_matter(
-                article_title=fields["article_title"],
-                author_html=fields["author_html"],
-                volume=fields["volume"],
-                page_numbers=fields["page_numbers"],
-                source_url=current_url,
-            )
-            base_name = url_to_basename(current_url)
-            out_path = save_markdown(Path(output_dir), base_name, front_matter, fields["content_md"])
-            
-            article_count += 1
-            print(f"    ✓ Saved: {out_path}")
-            print(f"    ✓ Title: {fields['article_title']}")
-            
-            # Get the next article URL
-            next_url = get_next_article_url(html, current_url)
-            if next_url:
-                current_url = next_url
-                print(f"    → Next: {current_url}")
-            else:
-                print("    → No next article found, stopping.")
-                break
-            
-            # Pause to be respectful to the server
-            time.sleep(0.5)
-            print()
-            
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                print(f"Reached end of articles (HTTP 404) at: {current_url}")
-                break
-            else:
-                print(f"HTTP Error {e.response.status_code}: {e}", file=sys.stderr)
-                break
-        except Exception as e:
-            print(f"Error processing {current_url}: {e}", file=sys.stderr)
-            break
-    
-    print("-" * 50)
-    print(f"Download completed. Processed {article_count} articles.")
-    return 0
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Download and convert Pravenc article(s) to Markdown with YAML front matter")
-    parser.add_argument("url", nargs="?", default="https://pravenc.ru/text/71893.html", help="Article URL to download (or starting URL for --all)")
-    parser.add_argument("--out-dir", default="articles", help="Directory to save the Markdown file(s)")
-    parser.add_argument("--all", action="store_true", help="Download all articles starting from the given URL")
+    parser = argparse.ArgumentParser(description="Download and convert a Pravenc article to Markdown with YAML front matter")
+    parser.add_argument("url", nargs="?", default="https://pravenc.ru/text/62806.html", help="Article URL to download")
+    parser.add_argument("--out-dir", default="articles", help="Directory to save the Markdown file")
     args = parser.parse_args(argv)
 
-    if args.all:
-        return download_all_articles(args.url, args.out_dir)
-    else:
-        # Single article download (original functionality)
-        url = args.url
-        try:
-            html = fetch_html(url)
-            fields = extract_fields(html, base_url=url)
-            front_matter = build_front_matter(
-                article_title=fields["article_title"],
-                author_html=fields["author_html"],
-                volume=fields["volume"],
-                page_numbers=fields["page_numbers"],
-                source_url=url,
-            )
-            base_name = url_to_basename(url)
-            out_path = save_markdown(Path(args.out_dir), base_name, front_matter, fields["content_md"])
-            print(str(out_path))
-            return 0
-        except Exception as e:
-            print(f"Error: {e}", file=sys.stderr)
-            return 1
+    # Single article download
+    url = args.url
+    try:
+        html = fetch_html(url)
+        fields = extract_fields(html, base_url=url)
+        front_matter = build_front_matter(
+            article_title=fields["article_title"],
+            author_html=fields["author_html"],
+            volume=fields["volume"],
+            page_numbers=fields["page_numbers"],
+            source_url=url,
+        )
+        base_name = url_to_basename(url)
+        out_path = save_markdown(Path(args.out_dir), base_name, front_matter, fields["content_md"])
+        print(str(out_path))
+        return 0
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
