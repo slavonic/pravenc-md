@@ -80,8 +80,8 @@ def convert_church_slavonic_images(content, mapping):
             remaining_sequence = remaining_sequence.replace(' ', ' ')
             result_text += remaining_sequence
         
-        # Wrap in div with Church Slavonic class
-        return f'<div class="cu">{result_text}</div>'
+        # Wrap in span with Church Slavonic class
+        return f'<span class="cu">{result_text}</span>'
     
     # Replace all Church Slavonic image references
     converted_content = re.sub(pattern, replace_image, content)
@@ -140,7 +140,7 @@ def main():
     print("Church Slavonic Image to Unicode Converter")
     print("=" * 50)
     print("This script converts Church Slavonic image references to Unicode text")
-    print("wrapped in <div class='cu'> tags for proper font styling.")
+    print("wrapped in <span class='cu'> tags for proper font styling.")
     print()
     
     # Load the mapping
@@ -154,7 +154,7 @@ def main():
     # Show example conversion
     print("📝 Example conversion:")
     print("   Before: ![](https://pravenc.ru/char/26528/x010/image.png)")
-    print("   After:  <div class='cu'>ⷣ҇</div>")
+    print("   After:  <span class='cu'>ⷣ҇</span>")
     print()
     
     # Ask user if they want to do a dry run first
