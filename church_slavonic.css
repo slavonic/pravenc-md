@@ -1,0 +1,41 @@
+/* Church Slavonic Font Styling */
+.cu {
+    font-family: 'Ponomar', serif;
+    font-size: 1.1em;
+    line-height: 1.2;
+    color: #2c3e50;
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border-left: 3px solid #3498db;
+    margin: 2px 0;
+    display: inline-block;
+}
+
+/* Alternative styling for a more traditional look */
+.cu.traditional {
+    font-family: 'Ponomar', serif;
+    font-size: 1.2em;
+    line-height: 1.3;
+    color: #1a1a1a;
+    background-color: #fff;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 3px 0;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* For inline Church Slavonic text within paragraphs */
+p .cu {
+    display: inline;
+    padding: 1px 3px;
+    margin: 0 1px;
+}
+
+/* For Church Slavonic text in headings */
+h1 .cu, h2 .cu, h3 .cu, h4 .cu, h5 .cu, h6 .cu {
+    font-size: 0.9em;
+    vertical-align: baseline;
+}

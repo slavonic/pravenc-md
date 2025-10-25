@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Church Slavonic Text Example</title>
+    <link rel="stylesheet" href="church_slavonic.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .example {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        code {
+            background-color: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Church Slavonic Text Styling</h1>
+    
+    <p>This page demonstrates how Church Slavonic text will appear when converted from image references to Unicode text wrapped in <code>&lt;div class="cu"&gt;</code> tags.</p>
+    
+    <div class="example">
+        <h3>Example 1: Basic Church Slavonic Text</h3>
+        <p>Here is some Church Slavonic text: <div class="cu">◌ⷣ҇</div> This is how it will appear in your converted Markdown files.</p>
+    </div>
+    
+    <div class="example">
+        <h3>Example 2: Multiple Church Slavonic Characters</h3>
+        <p>Multiple characters: <div class="cu">ѡ҆́</div> <div class="cu">ѡ҆</div> <div class="cu">ѡ̀</div></p>
+    </div>
+    
+    <div class="example">
+        <h3>Example 3: Traditional Styling</h3>
+        <p>With traditional styling: <div class="cu traditional">◌ⷣ҇</div></p>
+    </div>
+    
+    <div class="example">
+        <h3>Example 4: Inline Church Slavonic Text</h3>
+        <p>This is inline Church Slavonic text <div class="cu">ѡ҆́</div> within a paragraph.</p>
+    </div>
+    
+    <h2>Font Recommendations</h2>
+    <p>For best results with Church Slavonic text, consider using these fonts:</p>
+    <ul>
+        <li><strong>Ponomar</strong> - Specifically designed for Church Slavonic</li>
+        <li><strong>serif</strong> - Fallback with good Unicode support</li>
+    </ul>
+    
+    <h2>CSS Usage</h2>
+    <p>To use the Church Slavonic styling in your Markdown files, include the CSS file:</p>
+    <pre><code>&lt;link rel="stylesheet" href="church_slavonic.css"&gt;</code></pre>
+    
+    <p>Or if you're using a Markdown processor that supports CSS, you can include the styles directly in your document.</p>
+</body>
+</html>
