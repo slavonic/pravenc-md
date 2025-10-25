@@ -24,13 +24,22 @@ def convert_church_slavonic_images(content, mapping):
     
     # Pattern to match Church Slavonic image URLs
     # Matches both char/26526 and char/26528 patterns
-    pattern = r'!\[\]\(https://pravenc\.ru/char/(26526|26528)/([^/]+)/image\.png\)'
+    # Handles spaces and special characters in the code sequence
+    pattern = r'!\[\]\(<https://pravenc\.ru/char/(26526|26528)/([^>]+)>\)'
     
     def replace_image(match):
         char_type = match.group(1)  # 26526 or 26528
         code_sequence = match.group(2)  # The character code sequence
         
-        # Extract hex chunks from the code sequence
+        # Remove /image.png if present and clean up the sequence
+        code_sequence = code_sequence.replace('/image.png', '').strip()
+        
+        # Skip empty sequences
+        if not code_sequence:
+            return ''
+        
+        # Split the sequence into parts, preserving spaces
+        # First, extract hex chunks
         hex_chunks = re.findall(r'x[0-9a-fA-F]{2,3}', code_sequence)
         
         # Convert each hex chunk to Unicode using the mapping
@@ -42,11 +51,37 @@ def convert_church_slavonic_images(content, mapping):
                 # If chunk not found in mapping, keep the original chunk
                 unicode_chars.append(f"[{chunk}]")
         
-        # Join the Unicode characters
-        unicode_text = ''.join(unicode_chars)
+        # Handle spaces: if there are spaces in the original sequence, preserve them
+        # We need to reconstruct the text with proper spacing
+        result_text = ''
+        remaining_sequence = code_sequence
+        
+        for chunk in hex_chunks:
+            # Find the position of this chunk in the remaining sequence
+            chunk_pos = remaining_sequence.find(chunk)
+            if chunk_pos > 0:
+                # There's text before this chunk (likely spaces)
+                prefix = remaining_sequence[:chunk_pos]
+                # Convert spaces to actual spaces
+                prefix = prefix.replace(' ', ' ')
+                result_text += prefix
+            
+            # Add the converted character
+            if chunk in mapping:
+                result_text += mapping[chunk]
+            else:
+                result_text += f"[{chunk}]"
+            
+            # Remove the processed part from remaining sequence
+            remaining_sequence = remaining_sequence[chunk_pos + len(chunk):]
+        
+        # Add any remaining text (spaces at the end)
+        if remaining_sequence:
+            remaining_sequence = remaining_sequence.replace(' ', ' ')
+            result_text += remaining_sequence
         
         # Wrap in div with Church Slavonic class
-        return f'<div class="cu">{unicode_text}</div>'
+        return f'<div class="cu">{result_text}</div>'
     
     # Replace all Church Slavonic image references
     converted_content = re.sub(pattern, replace_image, content)
@@ -76,8 +111,8 @@ def process_markdown_files(articles_dir, mapping, dry_run=False):
             # Convert Church Slavonic images
             converted_content = convert_church_slavonic_images(content, mapping)
             
-            # Count conversions
-            original_images = len(re.findall(r'!\[\]\(https://pravenc\.ru/char/(26526|26528)/[^/]+/image\.png\)', content))
+            # Count conversions using the same pattern as the conversion function
+            original_images = len(re.findall(r'!\[\]\(<https://pravenc\.ru/char/(26526|26528)/([^>]+)>\)', content))
             if original_images > 0:
                 total_conversions += original_images
                 processed_files += 1
