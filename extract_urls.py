@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to extract all article URLs from pravenc.ru listing pages.
-Downloads pages 1-361 and extracts article URLs from <span class="article_title"><a href="..."> elements.
+Downloads pages 1-376 and extracts article URLs from <span class="article_title"><a href="..."> elements.
 """
 
 import argparse
@@ -42,7 +42,7 @@ def extract_article_urls_from_page(html: str, base_url: str) -> list:
     return urls
 
 
-def extract_all_article_urls(start_page: int = 1, end_page: int = 361, output_file: str = "article_urls.txt") -> int:
+def extract_all_article_urls(start_page: int = 1, end_page: int = 376, output_file: str = "article_urls.txt") -> int:
     """Extract all article URLs from pravenc.ru listing pages."""
     all_urls = []
     base_url = "https://pravenc.ru/"
@@ -108,7 +108,7 @@ def extract_all_article_urls(start_page: int = 1, end_page: int = 361, output_fi
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Extract all article URLs from pravenc.ru listing pages")
     parser.add_argument("--start-page", type=int, default=1, help="Starting page number (default: 1)")
-    parser.add_argument("--end-page", type=int, default=361, help="Ending page number (default: 361)")
+    parser.add_argument("--end-page", type=int, default=376, help="Ending page number (default: 376)")
     parser.add_argument("--output", default="article_urls.txt", help="Output file for URLs (default: article_urls.txt)")
     args = parser.parse_args(argv)
     

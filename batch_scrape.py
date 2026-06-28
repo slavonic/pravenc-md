@@ -10,6 +10,8 @@ import sys
 import time
 from pathlib import Path
 
+from scrape_pravenc import url_to_basename
+
 
 def process_urls_from_file(url_file: str, output_dir: str = "articles", delay: float = 0.5) -> int:
     """Process all URLs from a file using the scraper."""
@@ -42,7 +44,13 @@ def process_urls_from_file(url_file: str, output_dir: str = "articles", delay: f
     for i, url in enumerate(urls, 1):
         try:
             print(f"[{i}/{len(urls)}] Processing: {url}")
-            
+
+            existing = Path(output_dir) / f"{url_to_basename(url)}.md"
+            if existing.exists():
+                print(f"    - Skipped (already exists): {existing}")
+                successful += 1
+                continue
+
             # Run the scraper for this URL
             result = subprocess.run([
                 sys.executable, "scrape_pravenc.py", 
