@@ -7,6 +7,8 @@ import os
 import re
 from pathlib import Path
 
+from _paths import ARTICLES_DIR, CHAR_MAPS_DIR
+
 def extract_church_slavonic_codes():
     """Extract all Church Slavonic character codes from Markdown files."""
     
@@ -20,7 +22,7 @@ def extract_church_slavonic_codes():
     char_26526_codes = set()
     char_26528_codes = set()
     
-    articles_dir = Path("articles")
+    articles_dir = ARTICLES_DIR
     if not articles_dir.exists():
         print("Articles directory not found!")
         return
@@ -82,7 +84,7 @@ def extract_church_slavonic_codes():
     print(f"   Total unique hex chunks: {len(all_hex_chunks)}")
     
     # Save all hex chunks
-    output_file = "all_church_slavonic_hex_chunks.txt"
+    output_file = CHAR_MAPS_DIR / "all_church_slavonic_hex_chunks.txt"
     with open(output_file, 'w', encoding='utf-8') as f:
         for chunk in sorted(all_hex_chunks):
             f.write(f"{chunk}\n")
@@ -90,7 +92,7 @@ def extract_church_slavonic_codes():
     print(f"\n✅ All hex chunks saved to: {output_file}")
     
     # Save char/26526 hex chunks
-    output_file_26526 = "char_26526_hex_chunks.txt"
+    output_file_26526 = CHAR_MAPS_DIR / "char_26526_hex_chunks.txt"
     with open(output_file_26526, 'w', encoding='utf-8') as f:
         for chunk in sorted(char_26526_hex_chunks):
             f.write(f"{chunk}\n")
@@ -98,7 +100,7 @@ def extract_church_slavonic_codes():
     print(f"✅ char/26526 hex chunks saved to: {output_file_26526}")
     
     # Save char/26528 hex chunks
-    output_file_26528 = "char_26528_hex_chunks.txt"
+    output_file_26528 = CHAR_MAPS_DIR / "char_26528_hex_chunks.txt"
     with open(output_file_26528, 'w', encoding='utf-8') as f:
         for chunk in sorted(char_26528_hex_chunks):
             f.write(f"{chunk}\n")

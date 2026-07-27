@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from collections import OrderedDict
 
+from _paths import ARTICLES_DIR, CHAR_MAPS_DIR
+
 
 def find_church_slavonic_urls(content):
     """
@@ -111,8 +113,8 @@ def save_hex_chunks(hex_chunks, output_file):
 
 def main():
     """Main function to extract Church Slavonic character codes."""
-    articles_dir = "articles"
-    output_file = "church_slavonic_hex_chunks.txt"
+    articles_dir = ARTICLES_DIR
+    output_file = CHAR_MAPS_DIR / "church_slavonic_hex_chunks.txt"
     
     print("Church Slavonic Character Code Extractor")
     print("=" * 50)

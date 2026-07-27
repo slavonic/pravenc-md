@@ -7,6 +7,8 @@ Handles both char/26526 and char/26528 URL patterns.
 import os
 from pathlib import Path
 
+from _paths import CHAR_MAPS_DIR
+
 def read_hex_chunks(filename):
     """Read hex chunks from the text file."""
     chunks = []
@@ -252,9 +254,9 @@ def main():
     print("=" * 60)
     
     # Read hex chunks from all files
-    all_chunks = read_hex_chunks("all_church_slavonic_hex_chunks.txt")
-    char_26526_chunks = set(read_hex_chunks("char_26526_hex_chunks.txt"))
-    char_26528_chunks = set(read_hex_chunks("char_26528_hex_chunks.txt"))
+    all_chunks = read_hex_chunks(CHAR_MAPS_DIR / "all_church_slavonic_hex_chunks.txt")
+    char_26526_chunks = set(read_hex_chunks(CHAR_MAPS_DIR / "char_26526_hex_chunks.txt"))
+    char_26528_chunks = set(read_hex_chunks(CHAR_MAPS_DIR / "char_26528_hex_chunks.txt"))
     
     if not all_chunks:
         print("No hex chunks found!")
@@ -266,7 +268,7 @@ def main():
     print(f"Overlapping: {len(char_26526_chunks & char_26528_chunks)} codes")
     
     # Generate HTML file
-    output_file = "complete_church_slavonic_mapping.html"
+    output_file = CHAR_MAPS_DIR / "complete_church_slavonic_mapping.html"
     if generate_html_mapping(all_chunks, char_26526_chunks, char_26528_chunks, output_file):
         print(f"\n✅ Complete HTML mapping file created successfully!")
         print(f"📁 File: {output_file}")

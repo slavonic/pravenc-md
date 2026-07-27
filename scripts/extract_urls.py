@@ -12,6 +12,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from _paths import ARTICLE_URLS_FILE
+
 
 def fetch_html(url: str) -> str:
     """Fetch HTML content from a URL with proper headers and encoding."""
@@ -57,7 +59,7 @@ def fetch_last_page_number() -> int:
     return page_numbers[-1]
 
 
-def extract_all_article_urls(start_page: int = 1, end_page: int = None, output_file: str = "article_urls.txt") -> int:
+def extract_all_article_urls(start_page: int = 1, end_page: int = None, output_file: str = str(ARTICLE_URLS_FILE)) -> int:
     """Extract all article URLs from pravenc.ru listing pages."""
     if end_page is None:
         end_page = fetch_last_page_number()
@@ -128,7 +130,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Extract all article URLs from pravenc.ru listing pages")
     parser.add_argument("--start-page", type=int, default=1, help="Starting page number (default: 1)")
     parser.add_argument("--end-page", type=int, default=None, help="Ending page number (default: last page from the listing page)")
-    parser.add_argument("--output", default="article_urls.txt", help="Output file for URLs (default: article_urls.txt)")
+    parser.add_argument("--output", default=str(ARTICLE_URLS_FILE), help="Output file for URLs (default: article_urls.txt)")
     args = parser.parse_args(argv)
     
     return extract_all_article_urls(args.start_page, args.end_page, args.output)

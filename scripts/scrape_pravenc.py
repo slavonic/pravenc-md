@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 import yaml
 
+from _paths import ARTICLES_DIR
+
 
 def sanitize_filename(text: str) -> str:
     text = text.strip().lower()
@@ -452,7 +454,7 @@ def save_markdown(output_dir: Path, base_name: str, front_matter: str, content_m
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Download and convert a Pravenc article to Markdown with YAML front matter")
     parser.add_argument("url", nargs="?", default="https://pravenc.ru/text/62806.html", help="Article URL to download")
-    parser.add_argument("--out-dir", default="articles", help="Directory to save the Markdown file")
+    parser.add_argument("--out-dir", default=str(ARTICLES_DIR), help="Directory to save the Markdown file")
     args = parser.parse_args(argv)
 
     # Single article download

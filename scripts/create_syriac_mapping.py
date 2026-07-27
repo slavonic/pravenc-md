@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """
-Script to create an HTML file for manual mapping of Church Slavonic character codes.
+Script to create an HTML file for manual mapping of Syriac character codes.
 Each code will be displayed with its corresponding image from pravenc.ru.
 """
 
-import os
 from pathlib import Path
 
+from _paths import CHAR_MAPS_DIR
 
-def read_hex_chunks(filename):
-    """Read hex chunks from the text file."""
+
+def read_syriac_hex_chunks(filename):
+    """Read Syriac hex chunks from the text file."""
     chunks = []
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             for line in f:
                 chunk = line.strip()
+                # Filter out empty chunks
                 if chunk:
                     chunks.append(chunk)
         return chunks
@@ -24,14 +26,14 @@ def read_hex_chunks(filename):
 
 
 def generate_html_mapping(hex_chunks, output_file):
-    """Generate HTML file with Church Slavonic codes and their images."""
+    """Generate HTML file with Syriac hex chunks and their images."""
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Church Slavonic Character Code Mapping</title>
+    <title>Syriac Character Code Mapping</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -141,19 +143,20 @@ def generate_html_mapping(hex_chunks, output_file):
 </head>
 <body>
     <div class="container">
-        <h1>Church Slavonic Character Code Mapping</h1>
+        <h1>Syriac Character Code Mapping</h1>
         
         <div class="stats">
-            <strong>Total Characters to Map:</strong> {len(hex_chunks)}
+            <strong>Total Hex Chunks to Map:</strong> {len(hex_chunks)}
         </div>
         
         <div class="instructions">
             <h3>Instructions for Manual Mapping:</h3>
             <ul>
-                <li>Each character code is displayed with its corresponding image from pravenc.ru</li>
-                <li>Look at the image and identify what Church Slavonic character it represents</li>
+                <li>Each hex chunk code is displayed with its corresponding image from pravenc.ru</li>
+                <li>Hex chunks are extracted from full Syriac codes (e.g., x40, x82DG from x40x82DG)</li>
+                <li>Look at the image and identify what Syriac character it represents</li>
                 <li>Enter the Unicode character or code in the input field below each image</li>
-                <li>You can use either the actual Unicode character (e.g., Ѣ) or the Unicode code (e.g., U+0462)</li>
+                <li>You can use either the actual Unicode character (e.g., ܐ) or the Unicode code (e.g., U+0710)</li>
                 <li>Save this file after completing the mapping for the next step</li>
             </ul>
         </div>
@@ -161,19 +164,22 @@ def generate_html_mapping(hex_chunks, output_file):
         <div class="character-grid">
 """
 
-    # Add each character code with its image
+    # Add each hex chunk with its image
     for i, chunk in enumerate(hex_chunks, 1):
-        image_url = f"https://pravenc.ru/char/26526/{chunk}/image.png"
+        # URL encode the chunk for use in URL
+        import urllib.parse
+        encoded_chunk = urllib.parse.quote(chunk)
+        image_url = f"https://pravenc.ru/char/26094/{encoded_chunk}/image.png"
         
         html_content += f"""
             <div class="character-item">
                 <div class="code">{chunk}</div>
                 <div class="image-container">
-                    <img src="{image_url}" alt="Church Slavonic character {chunk}" class="character-image" 
+                    <img src="{image_url}" alt="Syriac character {chunk}" class="character-image" 
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                     <div style="display:none; color:#e74c3c; font-size:12px;">Image not found</div>
                 </div>
-                <input type="text" class="unicode-input" placeholder="Enter Unicode character or code (e.g., Ѣ or U+0462)" 
+                <input type="text" class="unicode-input" placeholder="Enter Unicode character or code (e.g., ܐ or U+0710)" 
                        data-code="{chunk}" data-url="{image_url}">
                 <div class="url">{image_url}</div>
             </div>
@@ -227,8 +233,6 @@ console.log(JSON.stringify(mappings, null, 2));
 </html>
 """
 
-    # No need to format since we're using f-string
-    
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -241,30 +245,39 @@ console.log(JSON.stringify(mappings, null, 2));
 
 def main():
     """Main function to create the HTML mapping file."""
-    input_file = "church_slavonic_hex_chunks.txt"
-    output_file = "church_slavonic_mapping.html"
+    input_file = CHAR_MAPS_DIR / "syriac_hex_chunks.txt"
+    output_file = CHAR_MAPS_DIR / "syriac_mapping_corrected.html"
     
-    print("Creating Church Slavonic Character Mapping HTML")
+    print("Creating Syriac Character Mapping HTML")
     print("=" * 50)
     
     # Read hex chunks
-    hex_chunks = read_hex_chunks(input_file)
+    hex_chunks = read_syriac_hex_chunks(input_file)
     
     if not hex_chunks:
         print(f"No hex chunks found in {input_file}")
-        return
+        print("Running extraction script first...")
+        # Try to run extraction if file doesn't exist
+        import subprocess
+        result = subprocess.run(["python3", "extract_syriac_codes.py"], 
+                              capture_output=True, text=True)
+        if result.returncode == 0:
+            hex_chunks = read_syriac_hex_chunks(input_file)
+        if not hex_chunks:
+            print(f"❌ No hex chunks found. Please run extract_syriac_codes.py first.")
+            return
     
-    print(f"Found {len(hex_chunks)} character codes to map")
+    print(f"Found {len(hex_chunks)} hex chunks to map")
     
     # Generate HTML file
     if generate_html_mapping(hex_chunks, output_file):
         print(f"\n✅ HTML mapping file created successfully!")
         print(f"📁 File: {output_file}")
-        print(f"📊 Total characters: {len(hex_chunks)}")
+        print(f"📊 Total hex chunks: {len(hex_chunks)}")
         print(f"\n🌐 Open the HTML file in your browser to start mapping:")
         print(f"   file://{Path(output_file).absolute()}")
         print(f"\n💡 Instructions:")
-        print(f"   - Each character code is displayed with its image")
+        print(f"   - Each hex chunk code is displayed with its image")
         print(f"   - Enter the Unicode character in the input field")
         print(f"   - Save the file after completing the mapping")
     else:
@@ -273,3 +286,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

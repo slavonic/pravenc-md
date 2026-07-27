@@ -8,6 +8,8 @@ import re
 import os
 from pathlib import Path
 
+from _paths import ARTICLES_DIR, CU_MAPPING_FILE
+
 def load_mapping(mapping_file):
     """Load the Church Slavonic character mapping from JSON file."""
     try:
@@ -144,7 +146,7 @@ def main():
     print()
     
     # Load the mapping
-    mapping_file = "cu.json"
+    mapping_file = CU_MAPPING_FILE
     mapping = load_mapping(mapping_file)
     
     if not mapping:
@@ -166,19 +168,19 @@ def main():
     
     if choice == "1":
         print("\n🔍 Running dry run...")
-        process_markdown_files("articles", mapping, dry_run=True)
+        process_markdown_files(ARTICLES_DIR, mapping, dry_run=True)
         
         print(f"\n❓ Do you want to proceed with the actual conversion? (y/n): ", end="")
         proceed = input().strip().lower()
         if proceed == 'y':
             print("\n🔄 Converting files...")
-            process_markdown_files("articles", mapping, dry_run=False)
+            process_markdown_files(ARTICLES_DIR, mapping, dry_run=False)
         else:
             print("❌ Conversion cancelled.")
             
     elif choice == "2":
         print("\n🔄 Converting files...")
-        process_markdown_files("articles", mapping, dry_run=False)
+        process_markdown_files(ARTICLES_DIR, mapping, dry_run=False)
     else:
         print("❌ Invalid choice. Exiting.")
 

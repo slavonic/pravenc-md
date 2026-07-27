@@ -10,10 +10,11 @@ import sys
 import time
 from pathlib import Path
 
+from _paths import ARTICLES_DIR, ARTICLE_URLS_FILE, SCRIPTS_DIR
 from scrape_pravenc import url_to_basename
 
 
-def process_urls_from_file(url_file: str, output_dir: str = "articles", delay: float = 0.5) -> int:
+def process_urls_from_file(url_file: str, output_dir: str = str(ARTICLES_DIR), delay: float = 0.5) -> int:
     """Process all URLs from a file using the scraper."""
     url_file_path = Path(url_file)
     
@@ -53,7 +54,7 @@ def process_urls_from_file(url_file: str, output_dir: str = "articles", delay: f
 
             # Run the scraper for this URL
             result = subprocess.run([
-                sys.executable, "scrape_pravenc.py", 
+                sys.executable, str(SCRIPTS_DIR / "scrape_pravenc.py"),
                 "--out-dir", output_dir, 
                 url
             ], capture_output=True, text=True)
@@ -84,8 +85,9 @@ def process_urls_from_file(url_file: str, output_dir: str = "articles", delay: f
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Batch process article URLs using the scraper")
-    parser.add_argument("url_file", help="File containing article URLs (one per line)")
-    parser.add_argument("--out-dir", default="articles", help="Directory to save the Markdown files")
+    parser.add_argument("url_file", nargs="?", default=str(ARTICLE_URLS_FILE),
+                        help="File containing article URLs, one per line (default: article_urls.txt)")
+    parser.add_argument("--out-dir", default=str(ARTICLES_DIR), help="Directory to save the Markdown files")
     parser.add_argument("--delay", type=float, default=0.5, help="Delay between requests in seconds (default: 0.5)")
     args = parser.parse_args(argv)
     
