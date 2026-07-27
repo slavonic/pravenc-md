@@ -82,12 +82,10 @@ The mapping itself lives in [data/cu.json](data/cu.json), which maps each hex ch
 Run these only when new, unmapped characters appear:
 
 1. **Extract the codes** actually used in the articles:
-   - `scripts/extract_church_slavonic_codes.py` — codes from Church Slavonic images.
-   - `scripts/extract_all_church_slavonic_codes.py` — the same, covering both the `char/26526` and `char/26528` URL forms and writing a separate list for each.
+   - `scripts/extract_all_church_slavonic_codes.py` — extracts codes from Church Slavonic images, covering both the `char/26526` and `char/26528` URL forms and writing a separate list for each.
    - `scripts/extract_syriac_codes.py` — the equivalent for Syriac, which is stored the same way under `char/26094`.
 2. **Build a mapping sheet** — an HTML table showing every code beside its rendered image, for filling in by hand:
-   - `scripts/create_church_slavonic_mapping.py`
-   - `scripts/create_complete_church_slavonic_mapping.py` (both URL forms)
+   - `scripts/create_complete_church_slavonic_mapping.py`
    - `scripts/create_syriac_mapping.py`
 3. **Transfer** the identified characters into `data/cu.json` and re-run the converter.
 
