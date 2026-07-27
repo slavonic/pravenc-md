@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to extract all article URLs from pravenc.ru listing pages.
-Downloads pages 1-376 and extracts article URLs from <span class="article_title"><a href="..."> elements.
+Downloads all listing pages (page count read from the site's pagination) and extracts article URLs from <span class="article_title"><a href="..."> elements.
 """
 
 import argparse
@@ -42,8 +42,27 @@ def extract_article_urls_from_page(html: str, base_url: str) -> list:
     return urls
 
 
-def extract_all_article_urls(start_page: int = 1, end_page: int = 376, output_file: str = "article_urls.txt") -> int:
+def fetch_last_page_number() -> int:
+    """Get the last page number from the pagination block on the listing page."""
+    soup = BeautifulSoup(fetch_html("https://pravenc.ru/list.html"), 'html.parser')
+    nav = soup.find('div', class_='page_navig_div')
+    if nav is None:
+        raise ValueError("Could not find pagination block on https://pravenc.ru/list.html")
+
+    page_numbers = [int(text) for link in nav.find_all('a')
+                    if (text := link.get_text(strip=True)).isdigit()]
+    if not page_numbers:
+        raise ValueError("Could not find any page numbers in the pagination block")
+
+    return page_numbers[-1]
+
+
+def extract_all_article_urls(start_page: int = 1, end_page: int = None, output_file: str = "article_urls.txt") -> int:
     """Extract all article URLs from pravenc.ru listing pages."""
+    if end_page is None:
+        end_page = fetch_last_page_number()
+        print(f"Detected last page: {end_page}")
+
     all_urls = []
     base_url = "https://pravenc.ru/"
     
@@ -108,7 +127,7 @@ def extract_all_article_urls(start_page: int = 1, end_page: int = 376, output_fi
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Extract all article URLs from pravenc.ru listing pages")
     parser.add_argument("--start-page", type=int, default=1, help="Starting page number (default: 1)")
-    parser.add_argument("--end-page", type=int, default=376, help="Ending page number (default: 376)")
+    parser.add_argument("--end-page", type=int, default=None, help="Ending page number (default: last page from the listing page)")
     parser.add_argument("--output", default="article_urls.txt", help="Output file for URLs (default: article_urls.txt)")
     args = parser.parse_args(argv)
     
