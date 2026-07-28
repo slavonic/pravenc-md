@@ -42,7 +42,7 @@ The scripts resolve their input and output paths relative to the repository, so 
 
 ## Workflow
 
-Refreshing the corpus is a two-step pipeline. Run step 1, then step 2.
+Refreshing the corpus is a three-step pipeline, run in order.
 
 ### 1. Collect the article URLs
 
@@ -65,6 +65,35 @@ To fetch a single article instead of the whole list:
 ```bash
 python scripts/scrape_pravenc.py https://pravenc.ru/text/62806.html
 ```
+
+### 3. Link the articles to each other
+
+```bash
+python scripts/link_articles.py
+```
+
+As downloaded, articles cross-reference each other by title, pointing back at the website: `[Вишну](https://pravenc.ru/text/Вишну.html)`. This step turns those into local links — `[Вишну](158922.md)` — so the corpus can be browsed and traversed offline.
+
+The article number is not in the title URL, so each distinct title has to be looked up: its page carries a `<link rel="canonical" href="http://www.pravenc.ru/text/158922.html" />` tag naming the article. A title with no canonical tag leads to a disambiguation page or to nothing at all, and its link is left pointing at `pravenc.ru`.
+
+Those unresolved titles are collected in `data/unresolved_links.txt`, one URL per line, ordered by how many articles link to each, so the ones worth the most effort come first. Identifying them is a manual job; feeding the results back in is not wired up yet.
+
+Two kinds of link are deliberately left alone: the `source_url` in an article's front matter, which records where the article came from, and links from an article to itself, which arise when a title is an alias for the article containing it.
+
+Every lookup is recorded in `data/link_cache.json`, so the run is **resumable** — interrupt it with Ctrl-C and re-run to pick up where it stopped — and a later run over freshly scraped articles only pays for titles it has not seen. Rewriting the files uses only the cache, so once the lookups are done, re-running makes no requests and changes nothing further.
+
+Useful options:
+
+| Option | Effect |
+| --- | --- |
+| `--dry-run` | Report what would change without editing any file. |
+| `--limit N` | Resolve at most N new titles this run, to spread the lookups over several sessions. |
+| `--resolve-only` | Fill the cache and write the unresolved list, without editing any article. |
+| `--unresolved` | Where to write the list of links with no canonical tag. |
+| `--allow-missing` | Also rewrite links whose target article is not in `articles/` (by default those are left alone, so no link points at a file that does not exist). |
+| `--delay` | Pause between requests, 0.5 s by default. |
+
+A file path can also be passed to process a single article. Note that the whole corpus contains tens of thousands of distinct titles, so a first full run takes hours; `--limit` and the cache exist to make that manageable.
 
 ## Church Slavonic text
 
