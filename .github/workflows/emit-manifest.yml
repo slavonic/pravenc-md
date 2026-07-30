@@ -1,0 +1,33 @@
+name: emit-update-manifest
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # full history + tags, needed to diff tags
+
+      - name: Emit manifest
+        run: |
+          set -euo pipefail
+          CUR="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --abbrev=0 "${CUR}^" 2>/dev/null || true)"
+          mkdir -p updates
+          if [ -z "${PREV}" ]; then
+            # first release: treat every article as Added
+            git ls-files articles/ | sed 's/^/A\t/' > "updates/${CUR}.txt"
+          else
+            git diff --name-status "${PREV}..${CUR}" -- articles/ > "updates/${CUR}.txt"
+          fi
+          echo "----- updates/${CUR}.txt -----"
+          cat "updates/${CUR}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: update-manifest-${{ github.ref_name }}
+          path: updates/*.txt

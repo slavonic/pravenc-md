@@ -12,6 +12,7 @@ This repository contains the articles published in the [electronic version of th
 | [scripts/](scripts/) | All Python scripts (scraping pipeline and Church Slavonic / Syriac utilities). |
 | [data/](data/) | The character mapping used by the converters, plus a stylesheet and example page. |
 | [data/char-maps/](data/char-maps/) | Working files for building character mappings: extracted code lists and the HTML mapping sheets. |
+| [.github/workflows/](.github/workflows/) | CI: emits a manifest of changed articles on each release tag. |
 
 ## Article format
 
@@ -94,6 +95,28 @@ Useful options:
 | `--delay` | Pause between requests, 0.5 s by default. |
 
 A file path can also be passed to process a single article. Note that the whole corpus contains tens of thousands of distinct titles, so a first full run takes hours; `--limit` and the cache exist to make that manageable.
+
+## Releases and update manifests
+
+Downstream consumers of the corpus generally do not want to re-read all of `articles/` after every scrape; they want to know what changed. [.github/workflows/emit-manifest.yml](.github/workflows/emit-manifest.yml) provides that.
+
+Pushing a tag beginning with `v` triggers it:
+
+```bash
+git tag v2026.07 && git push origin v2026.07
+```
+
+The workflow diffs `articles/` between the previous `v*` tag and the new one, and writes the result to `updates/<tag>.txt`, one line per changed article in `git diff --name-status` form:
+
+```
+A	articles/153375.md
+M	articles/62806.md
+D	articles/150025.md
+```
+
+where `A` is added, `M` modified, and `D` deleted. On the very first tag there is no previous one to diff against, so every article is listed as added.
+
+The file is uploaded as a build artifact named `update-manifest-<tag>`, rather than committed back to the repository. It is consumed by the separate [pravenc-rag](https://github.com/typiconman/pravenc-rag) repository, which builds a retrieval layer over these articles: it downloads the manifest and runs `pravenc-index update` to re-index only the articles that actually changed. Note that GitHub expires build artifacts after a retention period (90 days by default), so a manifest should be collected reasonably soon after the release that produced it.
 
 ## Church Slavonic text
 
