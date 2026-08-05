@@ -2,5 +2,6 @@ requests>=2.31.0
 beautifulsoup4>=4.12.2
 markdownify>=0.13.1
 pyyaml>=6.0.1
+pymorphy3>=2.0.2
 
 

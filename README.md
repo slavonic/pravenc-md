@@ -147,6 +147,32 @@ All of these read from and write to [data/char-maps/](data/char-maps/).
 
 Church Slavonic needs a font with the required combining marks, such as [Ponomar](https://sci.ponomar.net/fonts.html). [data/church_slavonic.css](data/church_slavonic.css) styles the `.cu` spans, and [data/church_slavonic_example.html](data/church_slavonic_example.html) is a small page demonstrating the result.
 
+## Sigla
+
+The encyclopedia abbreviates each article's headword to a siglum throughout the body of that same article: in КОНДАК the word is written `К.`, in АЛЕКСИЙ, ЧЕЛОВЕК БОЖИЙ it becomes `А. ч. Б.`. The effect is that an article's own subject is nearly unfindable in it by lexical search — a problem for retrieval over this corpus.
+
+Expanding the sigla back to full words is not simply a matter of substitution: Russian is inflected, so the expansion has to carry the right grammatical case, which the abbreviation does not record. [scripts/siglum_scope.py](scripts/siglum_scope.py) measures how tractable that is before any expander is written. **It is only a reporting tool; it modifies no article.**
+
+```bash
+python scripts/siglum_scope.py
+```
+
+It reads each article's `article_title` from the front matter, derives the siglum, finds its occurrences in the body, and sorts each one by whether the case can be recovered automatically:
+
+| Class | Meaning |
+| --- | --- |
+| `modifier` | An adjacent agreeing modifier fixes the case — `многострофных К.` is unambiguously genitive plural. |
+| `prep` | A governing preposition fixes it — `в К.` is prepositional. |
+| `standalone` | Nothing nearby settles the case; expanding would need editorial judgement. |
+
+The first two are safely expandable. Multi-word headwords are counted separately and not classified, being the harder case.
+
+The report gives the split between those classes, the distribution of cases and numbers, and the most siglum-dense articles, with examples in context. As an indication of scale, a 400-article sample found 2,665 single-word siglum occurrences, of which about a third were safely expandable — so an automatic expander would help, but would leave the majority untouched.
+
+Options: `--limit N` to scan only the first N articles, `--filter SUBSTR` to restrict to matching titles, `--out FILE.jsonl` to write one row per occurrence for deeper analysis or to seed an expander, and `--samples` / `--context` to control the printed examples.
+
+This script needs `pymorphy3` for the morphological analysis, which is in `requirements.txt` along with everything else.
+
 ## License
 
 See [LICENSE](LICENSE). The underlying articles are © Церковно-научный центр «Православная Энциклопедия».
